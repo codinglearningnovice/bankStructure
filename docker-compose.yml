@@ -1,0 +1,63 @@
+services:
+  # Backend API (Node.js)
+  backend:
+    build: ./backend
+    container_name: node_backend
+    ports:
+      - "5000:5000"
+    environment:
+      # DATABASE_URL for Postgres
+      - DATABASE_URL=postgresql://admin:YourStrongPassword@postgres:5432/my_app_db?schema=public
+      #- REDIS_URL=redis://redis:6379
+      - NODE_ENV=development
+    
+    volumes:
+     - ./backend:/app         # Your code changes sync instantly
+     - /app/node_modules      # Keeps container's node_modules
+     
+    depends_on:
+      - postgres
+          
+      #- redis
+    networks:
+      - app-network
+    restart: unless-stopped
+    command: sh -c "npx prisma migrate deploy && npx prisma generate && npm run dev"
+
+  # Frontend (React via Vite)
+  ########  - app-network
+
+  # Database (Postgres)
+  postgres:
+    image: postgres:latest
+    container_name: postgres_db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=YourStrongPassword
+      - POSTGRES_DB=my_app_db
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d my_app_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  # Cache (Redis)
+  #redis:
+    #image: redis:alpine
+    #container_name: redis_cache
+    #ports:
+     # - "6379:6379"
+    #networks:
+     # - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres-data: 

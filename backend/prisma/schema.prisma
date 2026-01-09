@@ -1,0 +1,116 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["prismaSchemaFolder"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String        @id @default(uuid())
+  firstname         String
+  lastname          String
+  email             String        @unique
+  username          String        @unique
+  password          String
+  role              String        @default("CUSTOMER")
+  isEmailVerified   Boolean       @default(false)
+  accountStatus     String        @default("ACTIVE")
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  // Relations
+  tokens            Token[]
+  accounts          Account[]
+  payees            Payee[]
+  transactions      Transaction[]
+  loans             Loan[]
+  
+  @@map("users")
+}
+
+model Token {
+  id        String    @id @default(uuid())
+  key       String
+  code      String
+  type      String
+  status    String    @default("NOT_USED")
+  expires   DateTime
+  userId    String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([key, code, type])
+  @@map("tokens")
+}
+
+model Account {
+  id            String        @id @default(uuid())
+  userId        String
+  accountNumber String        @unique
+  balance       Decimal       @default(0.00) @db.Decimal(30, 2)
+  type          String
+  status        String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]
+  loans         Loan[]
+  
+  @@map("accounts")
+}
+
+model Payee {
+  id            String   @id @default(uuid())
+  userId        String 
+  accountName   String
+  accountNumber String
+  bankCode      String
+  detail        Json     @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("payees")
+}
+
+model Transaction {
+  id            String   @id @default(uuid())
+  userId        String
+  reference     String   @unique
+  accountId     String
+  amount        Decimal  @db.Decimal(30, 2)
+  detail        Json     @default("{}")
+  type          String
+  status        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account       Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  @@map("transactions")
+}
+
+model Loan {
+  id            String   @id @default(uuid())
+  userId        String
+  accountId     String
+  amount        Decimal  @db.Decimal(30, 2)
+  interest      Decimal  @db.Decimal(10, 2)
+  status        String   // PENDING, ACTIVE, DENIED, COMPLETED, DEFAULTED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account       Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  @@map("loans")
+}
